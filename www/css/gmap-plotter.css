@@ -1,0 +1,49 @@
+.centered-pills { text-align:center; }
+.centered-pills ul.nav-pills { display:inline-block; }
+.centered-pills li { display:inline; }
+.centered-pills a { float:left; }
+* html .centered-pills ul.nav-pills { display:inline; } /* IE6 */
+*+html .centered-pills ul.nav-pills { display:inline; } /* IE7 */
+
+/*---------------------------------------------------------------------------*/
+/* Top */
+/*---------------------------------------------------------------------------*/
+div.top {
+	height: 764px;
+}
+
+#map_canvas{
+	height:500px;
+}
+
+#marker_list{
+	height:400px;
+	width:100%;
+}
+
+#marker_num_list{
+	height:400px;
+	width:100%;
+}
+
+#path_info{
+	height:100px;
+}
+
+#points_info_resolution{
+	width: 3em;
+}
+
+#points_list{
+	height:400px;
+	width:100%;
+}
+
+#points_num_list{
+	height:400px;
+	width:100%;
+}
+
+#points_info{
+	height:100px;
+}

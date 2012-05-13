@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title data-localize="title">Google Maps Plotter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="">
+<meta name="author" content="">
+
+<link href="/css/bootstrap.min.css" rel="stylesheet">
+<link href="/css/gmap-plotter.css" rel="stylesheet">
+
+<script src="http://code.jquery.com/jquery-1.7.2.min.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+<script src="http://maps.google.com/maps/api/js?sensor=false"></script>
+<script src="/js/gmap-plotter.js"></script>
+</head>
+
+<body>
+<div class="container">
+<div class="row top">
+<div class="span7">
+<div id="map_canvas"></div>
+</div><!-- /span -->
+
+<div class="span5">
+<div class="row">
+<div class="span5">
+<ul class="nav nav-pills" id="main_menu">
+<li class="active"><a href="#path" data-toggle="tab">パス</a></li>
+<li><a href="#points" data-toggle="tab">分割</a></li>
+</ul>
+</div><!-- /span -->
+</div><!-- /row -->
+
+<div class="tab-content">
+<div class="tab-pane active" id="path">
+<div class="row">
+<div class="span1">
+<textarea id="marker_num_list"></textarea>
+</div><!-- /span -->
+<div class="span4">
+<textarea id="marker_list"></textarea>
+</div><!-- /span -->
+</div><!-- /row -->
+
+<div class="row">
+<div class="span5" id="path_info">
+<p>距離: <span id="path_info_distance"></span></p>
+</div><!-- /span-->
+</div><!-- /row -->
+</div><!-- /tab-pane(path) -->
+
+<div class="tab-pane" id="points">
+<div class="row">
+<div class="span1">
+<textarea id="points_num_list"></textarea>
+</div><!-- /span -->
+<div class="span4">
+<textarea id="points_list"></textarea>
+</div><!-- /span -->
+</div><!-- /row -->
+
+<div class="row">
+<div class="span5" id="points_info">
+<p>点数: <span id="points_info_count"></span></p>
+<div class="well form-inline"><input type="text" class="input-small" id="points_info_resolution" value="20"/>m <button class="btn" id="points_info_split_button">split</button></div>
+</div><!-- /span-->
+</div><!-- /row -->
+</div><!-- /tab-pane(points) -->
+</div><!-- /tab-content -->
+
+</div><!-- /span-->
+</div><!-- /row -->
+
+<footer class="centered-pills">
+<p>Copyright &copy; 2012 ISHITOYA Kentaro. All Rights Reserved</p>
+</footer>
+</div> <!-- /container -->
+
+<script>
+var markers = $([]);
+var circles = $([]);
+var map;
+var poly;
+
+$(function () {
+  $('#myTab a').click(function (e) {
+    e.preventDefault();
+    $(this).tab('show');
+  });
+  $("#main_menu li a").mouseup(function(event){
+    if(event.target.href.indexOf("points") >= 0){
+      circles.each(function(k, v){
+        v.setMap(map);
+      });
+      markers.each(function(k, v){
+        v.setMap();
+	  });
+    }else{
+      circles.each(function(k, v){
+        v.setMap();
+      });
+      markers.each(function(k, v){
+        v.setMap(map);
+      });
+	}
+  });
+
+  var latlng = new google.maps.LatLng(35.37381197861054, 138.92977388291172);
+  var mapOptions = {
+    zoom: 17,
+    center: latlng,
+    mapTypeId: google.maps.MapTypeId.HYBRID,
+    disableDoubleClickZoom: true
+  };
+
+  map =
+    new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
+  google.maps.event.addDomListener(map, 'click', onMapClicked);
+
+  var polyOptions = {
+    strokeColor: '#FF0000',
+    strokeOpacity: 0.5,
+    strokeWeight: 3
+  }
+  poly = new google.maps.Polyline(polyOptions);
+  poly.setMap(map);
+});
+
+function onMapClicked(event){
+  addPlot(event.latLng);
+}
+
+function addPlot(latLng){
+  var marker = new google.maps.Marker({
+    position: latLng,
+    map: map,
+    draggable: true,
+    flat: true,
+    animation: google.maps.Animation.DROP,
+    title: "" + (markers.length + 1),
+  });
+  google.maps.event.addListener(marker, "dblclick", function(event) {
+    marker.setMap();
+    markers = jQuery.grep(markers, function(value) {
+      return value != marker;
+    });
+    updateMarkerList();
+  });
+  google.maps.event.addListener(marker, "dragend", function(event) {
+    var i = 0;
+    markers.each(function(k, v){
+      if(v == marker){
+        i = k;
+      }
+    });
+
+    var path = poly.getPath();
+    path.removeAt(i);
+    path.insertAt(i, marker.position);
+    updateMarkerList();
+  });
+  poly.getPath().push(marker.position);
+  markers.push(marker);
+  updateMarkerList();
+}
+
+function updateMarkerList(){
+  var markerList = $("#marker_list");
+  var markerNumList = $("#marker_num_list");
+  var list = "";
+  var numList = "";
+  markers.each(function(k, v){
+    list += v.position.lat() + "," + v.position.lng() + "\n";
+    numList += (k + 1) + "\n";
+  });
+  markerList.val(list);
+  markerNumList.val(numList);
+  updatePathInfo();
+}
+
+function updatePathInfo(){
+  var distance = 0;
+  var lastPoint = null;
+  markers.each(function(k, v){
+    if(lastPoint){
+      distance += google.maps.geometry.spherical.computeDistanceBetween(lastPoint.position, v.position);
+    }
+    lastPoint = v;
+  });
+  $("#path_info_distance").html(distance + "m");
+}
+
+$("#marker_list").scroll(function() {
+  $("#marker_num_list").scrollTop($("#marker_list").scrollTop());
+});
+
+$("#marker_num_list").scroll(function() {
+  $("#marker_list").scrollTop($("#marker_num_list").scrollTop());
+});
+
+$("#marker_list").bind("change", function(){
+  markers.each(function(k, v){
+    v.setMap();
+  });
+  markers = $([]);
+  var polyOptions = {
+    strokeColor: '#FF0000',
+    strokeOpacity: 0.5,
+    strokeWeight: 3
+  }
+  poly.setMap();
+  poly = new google.maps.Polyline(polyOptions);
+  poly.setMap(map);
+
+  str = $("#marker_list").val().replace(/\r\n/g , "\n");
+  str = str.replace(/^(\n+)|(\n+)$/g , "");
+  var lines = $(str.split(/\n/g));
+  lines.each(function(k, line){
+    var latLng = line.split(",");
+  if(isNaN(parseFloat(latLng[0])) == false &&
+     isNaN(parseFloat(latLng[1])) == false){
+      addPlot(new google.maps.LatLng(parseFloat(latLng[0]),
+                                     parseFloat(latLng[1])));
+    }
+  });
+});
+
+$("#points_info_split_button").click(function(){
+  splitPathEqualInterval();
+});
+
+function splitPathEqualInterval(){
+  var interval = parseFloat($("#points_info_resolution").val());
+  if(isNaN(interval) || interval < 0){
+    $("points_info_resolution").val(20);
+    return;
+  }
+  circles.each(function(k, v){
+    v.setMap();
+  });
+  circles = $([]);
+  var points = $([]);
+  var lastMarker = null;
+  var remained = false;
+  var remainingDistance = 0.0;
+  markers.each(function(k, v){
+    if(lastMarker == null){
+      points.push(v.position);
+      lastMarker = v;
+  	  return true;
+    }
+	var distance = google.maps.geometry.spherical.computeDistanceBetween(lastMarker.position, v.position);
+
+	//check distance between last marker and current marker
+	//if distance shorter than interval, goto next marker
+	if(remained && distance < remainingDistance){
+	  remainingDistance -= distance;
+	  lastMarker = v;
+	  return true;
+	}
+
+	//calculate scale and distance
+	var scale = interval / distance;
+	var latDiff = v.position.lat() - lastMarker.position.lat();
+	var lngDiff = v.position.lng() - lastMarker.position.lng();
+    var totalDistance = 0.0;
+	var lastPoint = lastMarker.position;
+
+	if(remained){
+	  rScale = remainingDistance / distance;
+	  var pt = new google.maps.LatLng(lastPoint.lat() + latDiff * rScale,
+    		                          lastPoint.lng() + lngDiff * rScale);
+      totalDistance += remainingDistance;
+	  points.push(pt);
+      lastPoint = pt;
+	  remained = false;
+	}
+	
+	var latDelta = latDiff * scale;
+	var lngDelta = lngDiff * scale;
+	while(totalDistance + interval < distance){
+	  var pt = new google.maps.LatLng(lastPoint.lat() + latDelta,
+                                      lastPoint.lng() + lngDelta);
+      totalDistance += interval;
+	  points.push(pt);
+      lastPoint = pt;
+	}
+	remained = true;
+	remainingDistance = interval - (distance - totalDistance);
+    lastMarker = v;
+  });
+  points.push(markers[markers.length - 1].position);
+  $("#points_info_count").text(points.length);
+
+  points.each(function(k, v){
+    var c = new google.maps.Circle({
+      center: v,
+      fillColor: '#ff0000',
+      fillOpacity: 0.5,
+      map: map,
+      radius: interval,
+      strokeColor: '#ff0000',
+      strokeOpacity: 1,
+      strokeWeight: 1
+    });
+	circles.push(c);
+  });
+  updatePointsList();
+}
+
+function updatePointsList(){
+  var pointsList = $("#points_list");
+  var pointsNumList = $("#points_num_list");
+  var list = "";
+  var numList = "";
+  circles.each(function(k, v){
+    list += v.center.lat() + "," + v.center.lng() + "\n";
+    numList += (k + 1) + "\n";
+  });
+  pointsList.val(list);
+  pointsNumList.val(numList);
+}
+
+$("#points_list").scroll(function() {
+  $("#points_num_list").scrollTop($("#points_list").scrollTop());
+});
+
+$("#points_num_list").scroll(function() {
+  $("#points_list").scrollTop($("#points_num_list").scrollTop());
+});
+  
+</script>
+</body>
+</html>
