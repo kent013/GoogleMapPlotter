@@ -21,6 +21,8 @@
 <div class="row top">
 <div class="span7">
 <div id="map_canvas"></div>
+<div id="map_info">Id: <span id="map_info_id"></span> Lat:<span id="map_info_lat"></span> Lng:<span id="map_info_lng"></span></div>
+<div class="controls"><label class="checkbox inline"><input type="checkbox" checked id="append_markers_checkbox"/>Append Markers</label></div>
 </div><!-- /span -->
 
 <div class="span5">
@@ -90,7 +92,7 @@ $(function () {
     $(this).tab('show');
   });
   $("#main_menu li a").mouseup(function(event){
-    if(event.target.href.indexOf("points") >= 0){
+    if(getMode() == "markers"){
       circles.each(function(k, v){
         v.setMap(map);
       });
@@ -129,7 +131,16 @@ $(function () {
 });
 
 function onMapClicked(event){
-  addPlot(event.latLng);
+  if(getMode() == "markers" && $("#append_markers_checkbox").is(":checked")){
+    addPlot(event.latLng);
+  }
+}
+
+function getMode(){
+  if($("li[class*=active] > a")[0].href.indexOf("points") >= 0){
+    return "points";
+  }
+  return "markers";
 }
 
 function addPlot(latLng){
@@ -141,6 +152,14 @@ function addPlot(latLng){
     animation: google.maps.Animation.DROP,
     title: "" + (markers.length + 1),
   });
+  google.maps.event.addListener(marker, "click", function(event){
+    var i = indexOfMarker(marker);
+    scrollToLine($("#marker_list"), i);
+    scrollToLine($("#marker_num_list"), i);
+	$("#map_info_id").text(i + 1);
+	$("#map_info_lat").text(marker.position.lat());
+	$("#map_info_lng").text(marker.position.lng());
+  });
   google.maps.event.addListener(marker, "dblclick", function(event) {
     marker.setMap();
     markers = jQuery.grep(markers, function(value) {
@@ -149,12 +168,7 @@ function addPlot(latLng){
     updateMarkerList();
   });
   google.maps.event.addListener(marker, "dragend", function(event) {
-    var i = 0;
-    markers.each(function(k, v){
-      if(v == marker){
-        i = k;
-      }
-    });
+    var i = indexOfMarker(marker);
 
     var path = poly.getPath();
     path.removeAt(i);
@@ -164,6 +178,26 @@ function addPlot(latLng){
   poly.getPath().push(marker.position);
   markers.push(marker);
   updateMarkerList();
+}
+
+function indexOfMarker(marker){
+  var i = 0;
+  markers.each(function(k, v){
+    if(v == marker){
+      i = k;
+    }
+  });
+  return i;
+}
+
+function indexOfCircle(circle){
+  var i = 0;
+  circles.each(function(k, v){
+    if(v == circle){
+      i = k;
+    }
+  });
+  return i;
 }
 
 function updateMarkerList(){
@@ -306,7 +340,16 @@ function splitPathEqualInterval(){
       strokeWeight: 1
     });
 	circles.push(c);
+    google.maps.event.addListener(c, "click", function(event){
+      var i = indexOfCircle(c);
+      scrollToLine($("#points_list"), i);
+      scrollToLine($("#points_num_list"), i);
+      $("#map_info_id").html(i + 1);
+	  $("#map_info_lat").html(c.center.lat());
+	  $("#map_info_lng").html(c.center.lng());
+    });
   });
+
   updatePointsList();
 }
 
@@ -331,6 +374,10 @@ $("#points_num_list").scroll(function() {
   $("#points_list").scrollTop($("#points_num_list").scrollTop());
 });
   
+function scrollToLine(ta, lineNumber) {
+  var lineHeight = parseInt(ta.css('line-height'));
+  ta.scrollTop(lineNumber * lineHeight);
+}
 </script>
 </body>
 </html>
